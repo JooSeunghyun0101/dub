@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>한국어 더빙</title>
+<meta name="robots" content="noindex">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<style>
+:root{--bg:#f2f2f7;--card:#fff;--label:#1c1c1e;--label-2:#6c6c70;--sep:rgba(60,60,67,.14);--accent:#0a66ff;--bad:#d70015;--shadow:0 1px 3px rgba(0,0,0,.06),0 6px 20px rgba(0,0,0,.05)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#000;--card:#1c1c1e;--label:#f2f2f7;--label-2:#a1a1a6;--sep:rgba(84,84,88,.5);--accent:#3d8bff;--bad:#ff453a;--shadow:none}}
+:root[data-theme="dark"]{--bg:#000;--card:#1c1c1e;--label:#f2f2f7;--label-2:#a1a1a6;--sep:rgba(84,84,88,.5);--accent:#3d8bff;--bad:#ff453a;--shadow:none}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--label);font:16px/1.5 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;-webkit-text-size-adjust:100%}
+main{max-width:720px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 32px)}
+header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+header a{color:var(--accent);text-decoration:none;font-size:15px}
+h1{font-size:22px;margin:0;flex:1}
+.card{background:var(--card);border-radius:16px;box-shadow:var(--shadow);padding:14px;margin-bottom:14px}
+form{display:flex;gap:8px}
+input{flex:1;min-width:0;font:inherit;padding:11px 12px;border-radius:12px;border:1px solid var(--sep);background:var(--bg);color:var(--label)}
+button{font:inherit;font-weight:600;border:0;border-radius:12px;padding:11px 14px;background:var(--accent);color:#fff;cursor:pointer}
+button.ghost{background:transparent;color:var(--accent);padding:8px 10px}
+button:disabled{opacity:.5}
+.hint{font-size:13px;color:var(--label-2);margin:8px 2px 0}
+.err{color:var(--bad)}
+.bar{height:6px;border-radius:3px;background:var(--sep);overflow:hidden;margin-top:8px}.bar i{display:block;height:100%;background:var(--accent);transition:width .4s}
+.list{display:grid;gap:10px}
+.item{display:flex;gap:12px;align-items:center;cursor:pointer;border-radius:12px;padding:4px}
+.item img{width:120px;aspect-ratio:16/9;object-fit:cover;border-radius:10px;background:var(--sep);flex:none}
+.item b{display:block;font-size:15px;line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.item small{color:var(--label-2);font-size:13px}
+.item>div{flex:1;min-width:0}
+.item .acts{display:flex;flex-direction:column;flex:none}
+.item .del{flex:none;background:transparent;color:var(--label-2);font-weight:500;font-size:13px;padding:8px 6px}
+.player{position:relative;aspect-ratio:16/9;border-radius:14px;overflow:hidden;background:#000}
+.player iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.cover{position:absolute;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.45);color:#fff;font-size:17px;font-weight:700;border:0;border-radius:0;width:100%}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.seg{display:inline-flex;background:var(--bg);border-radius:10px;padding:2px}
+.seg button{background:transparent;color:var(--label);font-weight:500;padding:6px 10px;border-radius:8px;font-size:14px}
+.seg button.on{background:var(--card);box-shadow:var(--shadow);font-weight:700}
+.sub{min-height:3.2em;margin-top:12px;font-size:18px;font-weight:600;line-height:1.45}
+.sub small{display:block;font-size:13px;font-weight:400;color:var(--label-2);margin-top:4px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+  <header><h1>한국어 더빙</h1></header>
+
+  <section id="watch" class="card" hidden>
+    <div class="player"><div id="yt"></div><button class="cover" id="cover" type="button">▶ 한국어로 재생</button></div>
+    <div class="row">
+      <button id="pp" type="button">재생</button>
+      <span class="seg" id="orig"><button data-v="15" class="on" type="button">원음 작게</button><button data-v="0" type="button">원음 끔</button></span>
+      <button class="ghost" id="close" type="button">목록</button>
+    </div>
+    <div class="sub" id="sub"></div>
+    <p class="hint" id="wtitle"></p>
+  </section>
+
+  <section id="make"></section>
+
+  <section class="card"><div class="list" id="list"><p class="hint">불러오는 중…</p></div></section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const SITE = {edit: false, list: "list.json", meta: v => `v/${v}/meta.json`, audio: (v, mix) => `v/${v}/ko${mix ? "_mix" : ""}.m4a`, page: location.pathname, log: null};
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+const mmss = s => s ? `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}` : "";
+let listTimer = null;
+async function loadList() {
+  clearTimeout(listTimer);
+  let items = [];
+  try { items = await (await fetch(SITE.list, {cache: "no-store"})).json(); } catch {}
+  $("list").innerHTML = items.length ? items.map(x => x.state === "done"
+    ? `<div class="item" data-v="${esc(x.vid)}"><img alt="" loading="lazy" src="https://i.ytimg.com/vi/${esc(x.vid)}/mqdefault.jpg"><div><b>${esc(x.title)}</b><small>${mmss(x.duration)} · ${esc(x.made)}${SITE.edit && x.shared ? " · 공유됨" : ""}</small></div>${SITE.edit ? `<span class="acts"><button class="del" data-pub="${esc(x.vid)}">공유</button><button class="del" data-del="${esc(x.vid)}" data-shared="${x.shared ? 1 : ""}">삭제</button></span>` : ""}</div>`
+    : `<div class="item"><img alt="" src="https://i.ytimg.com/vi/${esc(x.vid)}/mqdefault.jpg"><div style="flex:1"><b>${esc(x.title || x.vid)}</b>
+       <small class="${x.state === "error" ? "err" : ""}">${x.state === "error" ? "실패: " : ""}${esc(x.msg)}</small>${x.state === "run" ? `<div class="bar"><i style="width:${x.pct}%"></i></div>` : ""}</div>${x.state === "run" || !SITE.edit ? "" : `<button class="del" data-del="${esc(x.vid)}">삭제</button>`}</div>`).join("")
+    : `<p class="hint">아직 만든 더빙이 없습니다.</p>`;
+  if (items.some(x => x.state === "run")) listTimer = setTimeout(loadList, 3000);
+}
+$("list").addEventListener("click", async e => {
+  const pub = e.target.closest("[data-pub]");
+  if (pub) {
+    if (!confirm("이 더빙을 공개 사이트에 올릴까요?\n링크를 아는 사람은 누구나 볼 수 있습니다.")) return;
+    pub.disabled = true; pub.textContent = "올리는 중";
+    const r = await fetch("/api/dub/publish", {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({v: pub.dataset.pub})}).catch(() => null);
+    const j = await r?.json().catch(() => ({})) || {};
+    pub.disabled = false; pub.textContent = "공유";
+    if (!r?.ok) return alert(j.error || "올리지 못했습니다");
+    return prompt("올렸습니다. 1~2분 뒤 열립니다. 이 주소를 보내세요", j.url);
+  }
+  const del = e.target.closest("[data-del]");
+  if (del) {
+    const title = del.parentElement.querySelector("b")?.textContent || "";
+    if (!confirm(`이 더빙을 지울까요?${del.dataset.shared ? "\n공유 사이트에서도 내려갑니다." : ""}\n${title}`)) return;
+    del.disabled = true;
+    const r = await fetch("/api/dub/delete", {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({v: del.dataset.del})}).catch(() => null);
+    if (!r?.ok) alert((await r?.json().catch(() => ({})))?.error || "지우지 못했습니다");
+    return loadList();
+  }
+  const it = e.target.closest("[data-v]"); if (it) openVideo(it.dataset.v);
+});
+$("f")?.addEventListener("submit", async e => {
+  e.preventDefault(); $("ferr").hidden = true; $("go").disabled = true;
+  try {
+    const r = await fetch("/api/dub/start", {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({url: $("url").value})});
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || r.status);
+    $("url").value = ""; loadList();
+  } catch (err) { $("ferr").textContent = err.message; $("ferr").hidden = false; }
+  $("go").disabled = false;
+});
+let player = null, ytReady = null, meta = null, audio = new Audio(), syncTimer = null, origVol = 15, tracks = {};
+let sx = {max: 0, sum: 0, n: 0, fix: 0, last: 0};
+audio.preload = "auto";
+let waits = 0; audio.addEventListener("waiting", () => waits++);
+function loadYT() {
+  if (!ytReady) ytReady = new Promise(res => {
+    window.onYouTubeIframeAPIReady = res;
+    const s = document.createElement("script"); s.src = "https://www.youtube.com/iframe_api"; document.head.appendChild(s);
+  });
+  return ytReady;
+}
+async function openVideo(vid) {
+  meta = await (await fetch(SITE.meta(encodeURIComponent(vid)), {cache: "no-store"})).json();
+  if (!meta.segments) return;
+  history.replaceState(null, "", `${SITE.page}?v=${vid}`);
+  $("watch").hidden = false; $("make").hidden = true; $("cover").hidden = false;
+  $("wtitle").textContent = meta.title; $("sub").innerHTML = "";
+  ready.yt = false;
+  await loadYT();
+  makePlayer(vid, 0);
+  window.scrollTo({top: 0, behavior: "smooth"});
+  ready.au = false; coverState();
+  Object.values(tracks).forEach(u => u.startsWith("blob:") && URL.revokeObjectURL(u)); tracks = {};
+  audio.src = await track(vid, mixOn());
+  audio.load();
+  ready.au = true; coverState();
+}
+const mixOn = () => !!(origVol && meta?.mix);
+async function track(vid, mix) {
+  const k = vid + (mix ? "_mix" : "");
+  if (tracks[k]) return tracks[k];
+  const url = SITE.audio(vid, mix) + (meta?.ver ? `?${meta.ver}` : "");
+  try {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`audio ${r.status}`);
+    return tracks[k] = URL.createObjectURL(new Blob([await r.arrayBuffer()], {type: "audio/mp4"}));
+  } catch (e) { report("blob: " + e.message); return url; }
+}
+async function switchTrack() {
+  const vid = meta.vid, mix = mixOn(), b = $("orig").querySelector(".on"), label = b.textContent;
+  b.textContent = "불러오는 중…";
+  const url = await track(vid, mix);
+  b.textContent = label;
+  if (meta.vid !== vid || mixOn() !== mix || audio.src === url) return;
+  const playing = player?.getPlayerState?.() === YT.PlayerState.PLAYING;
+  audio.src = url;
+  audio.addEventListener("loadedmetadata", () => { audio.currentTime = player?.getCurrentTime?.() || 0; }, {once: true});
+  if (playing) audio.play().catch(() => $("cover").hidden = false);
+}
+let ytTry = 0, ytFailed = null;
+function makePlayer(vid, n) {
+  const my = ++ytTry; ytFailed = null;
+  player?.destroy?.();
+  $("yt").outerHTML = `<div id="yt"></div>`;
+  player = new YT.Player("yt", {
+    videoId: vid, host: n ? "https://www.youtube-nocookie.com" : "https://www.youtube.com",
+    playerVars: {playsinline: 1, rel: 0, modestbranding: 1, origin: location.origin},
+    events: {onReady: () => applyVol(), onStateChange: onState,
+             onError: e => { report("yt error " + e.data); $("sub").textContent = `유튜브 영상 오류(${e.data}) — 이 번호를 알려 주세요`; }},
+  });
+  const fr = player.getIframe?.(); if (fr) fr.referrerPolicy = "strict-origin-when-cross-origin";
+  const t0 = Date.now(), iv = setInterval(() => {
+    if (my !== ytTry) return clearInterval(iv);
+    if (typeof player?.playVideo === "function") { clearInterval(iv); ready.yt = true; applyVol(); coverState(); }
+    else if (Date.now() - t0 > 8000) {
+      const fr = document.querySelector("#yt, iframe#yt"), diag = `시도 ${n + 1} · YT ${typeof YT?.Player} · 틀 ${fr?.tagName || "없음"} · ${(fr?.src || "").split("?")[0].replace("https://", "")}`;
+      clearInterval(iv); report(`yt ready timeout · ${diag}`);
+      if (n === 0) return makePlayer(vid, 1);
+      $("sub").innerHTML = `영상을 불러오지 못했습니다. 「▶」를 누르면 다시 시도합니다<small>${esc(diag)}</small>`;
+      ytFailed = vid;
+      ready.yt = true; coverState();
+    }
+  }, 300);
+}
+window.addEventListener("pageshow", e => { if (e.persisted) location.reload(); });
+function coverState() {
+  const ok = ready.yt && ready.au;
+  $("cover").disabled = !ok;
+  $("cover").textContent = ok ? "▶ 한국어로 재생" : !ready.au ? "목소리 불러오는 중…" : "영상 준비 중…";
+}
+function report(err) {
+  if (SITE.log) fetch(SITE.log, {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({v: meta?.vid, err: String(err).slice(0, 200)})}).catch(() => {});
+}
+window.addEventListener("error", e => report(e.message));
+window.addEventListener("unhandledrejection", e => report(e.reason?.message || e.reason));
+audio.addEventListener("error", () => report("audio error " + (audio.error?.code ?? "")));
+function applyVol() { if (!player?.mute) return; if (origVol && !meta?.mix) { player.unMute(); player.setVolume(origVol); } else player.mute(); }
+function onState(e) {
+  const S = YT.PlayerState;
+  if (e.data === S.PLAYING) { $("cover").hidden = true; if (Math.abs(audio.currentTime - player.getCurrentTime()) > 0.5) audio.currentTime = player.getCurrentTime(); audio.play().catch(() => $("cover").hidden = false); startSync(); $("pp").textContent = "일시정지"; }
+  else if (e.data === S.PAUSED || e.data === S.ENDED || e.data === S.BUFFERING) { audio.pause(); if (e.data !== S.BUFFERING) $("pp").textContent = "재생"; }
+}
+let clk = {raw: -1, at: 0, gaps: []}, ready = {yt: false, au: false}, nextSeg = 0;
+let lead = 0, leadChk = 0, drE = 0;
+function videoTime() {
+  const t = player.getCurrentTime(), now = performance.now();
+  if (t !== clk.raw) { if (clk.at) clk.gaps.push(now - clk.at); clk = {raw: t, at: now, gaps: clk.gaps.slice(-20)}; }
+  return player.getPlayerState() === YT.PlayerState.PLAYING ? t + Math.min(0.5, (now - clk.at) / 1000) : t;
+}
+function startSync() {
+  clearInterval(syncTimer);
+  nextSeg = meta.segments.findIndex(x => x.at > videoTime());
+  syncTimer = setInterval(() => {
+    if (!player?.getCurrentTime) return;
+    const t = videoTime();
+    if (!audio.paused && player.getPlayerState() === YT.PlayerState.PLAYING) {
+      const dr = audio.currentTime - t, ab = Math.abs(dr);
+      sx.max = Math.max(sx.max, ab); sx.sum += ab; sx.sd = (sx.sd || 0) + dr; sx.n++;
+      if (leadChk && performance.now() > leadChk) { leadChk = 0; lead = Math.min(0.6, Math.max(0, lead - dr * 0.7)); }
+      const seg = meta.segments[nextSeg], prev = meta.segments[nextSeg - 1], pEnd = prev ? prev.at + prev.dur : 0;
+      drE = drE * 0.8 + dr * 0.2;
+      const rate = Math.abs(drE) < 0.06 ? 1 : 1 - Math.max(-0.05, Math.min(0.05, drE * 0.12));
+      if (Math.abs(audio.playbackRate - rate) > 0.004) audio.playbackRate = rate;
+      if (seg && Math.min(t, audio.currentTime) >= pEnd + 0.02) {
+        if (ab > 0.08 && t + lead < seg.at - 0.02) { audio.currentTime = t + lead; sx.fix++; leadChk = performance.now() + 600; drE = 0; }
+        nextSeg++;
+      } else if (ab > 3.0) { audio.currentTime = t; sx.fix++; drE = 0; }
+      if (seg === undefined || (nextSeg > 0 && meta.segments[nextSeg - 1].at > t + 2)) nextSeg = meta.segments.findIndex(x => x.at > t);
+      if (SITE.log && Date.now() - sx.last > 5000 && sx.n) {
+        const g = clk.gaps.length ? clk.gaps.reduce((a, b) => a + b) / clk.gaps.length : 0;
+        fetch(SITE.log, {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify(
+          {v: meta.vid, t: Math.round(t), max: +sx.max.toFixed(3), avg: +(sx.sum / sx.n).toFixed(3), sd: +(sx.sd / sx.n).toFixed(3), fix: sx.fix, n: sx.n, w: waits, rs: Math.round(g), ld: +lead.toFixed(3), pr: +audio.playbackRate.toFixed(3)})}).catch(() => {});
+        sx = {max: 0, sum: 0, n: 0, fix: 0, last: Date.now()}; waits = 0;
+      }
+    }
+    const s = meta.segments.findLast(x => x.at <= t + 0.1);
+    const show = s && t < s.at + Math.max(s.dur, s.end - s.start) + 0.8 ? s : null;
+    const html = show ? `${esc(show.ko)}<small>${esc(show.src)}</small>` : "";
+    if ($("sub").dataset.k !== String(show?.at)) { $("sub").innerHTML = html; $("sub").dataset.k = String(show?.at); }
+  }, 100);
+}
+function play() {
+  if (ytFailed) { const v = ytFailed; ready.yt = false; coverState(); $("sub").textContent = ""; return makePlayer(v, 1); }
+  if (!player?.playVideo) return;
+  audio.currentTime = player?.getCurrentTime?.() || 0; audio.play().catch(() => {});
+  applyVol(); player?.playVideo();
+}
+$("cover").addEventListener("click", play);
+$("pp").addEventListener("click", () => player?.getPlayerState?.() === YT.PlayerState.PLAYING ? player.pauseVideo() : play());
+$("orig").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  origVol = +b.dataset.v; [...$("orig").children].forEach(x => x.classList.toggle("on", x === b)); applyVol();
+  if (meta?.mix && ready.au) switchTrack();
+});
+$("close").addEventListener("click", () => {
+  player?.pauseVideo(); audio.pause(); clearInterval(syncTimer);
+  $("watch").hidden = true; $("make").hidden = false; history.replaceState(null, "", SITE.page); loadList();
+});
+
+loadList();
+const v0 = new URLSearchParams(location.search).get("v"); if (v0) openVideo(v0);
+</script>
+</body>
+</html>
